@@ -66,7 +66,7 @@ import {
 } from 'sentry/views/alerts/wizard/options';
 import {getAlertTypeFromAggregateDataset} from 'sentry/views/alerts/wizard/utils';
 import {isEventsStats} from 'sentry/views/dashboards/utils/isEventsStats';
-import PermissionAlert from 'sentry/views/settings/project/permissionAlert';
+import {ProjectPermissionAlert} from 'sentry/views/settings/project/projectPermissionAlert';
 
 import {isCrashFreeAlert} from './utils/isCrashFreeAlert';
 import {addOrUpdateRule} from './actions';
@@ -115,7 +115,7 @@ type Props = {
   isDuplicateRule?: boolean;
   ruleId?: string;
   sessionId?: string;
-} & RouteComponentProps<{projectId?: string; ruleId?: string}, {}> & {
+} & RouteComponentProps<{projectId?: string; ruleId?: string}> & {
     onSubmitSuccess?: FormProps['onSubmitSuccess'];
   } & DeprecatedAsyncComponent['props'];
 
@@ -1280,7 +1280,7 @@ class RuleFormContainer extends DeprecatedAsyncComponent<Props, State> {
     // Rendering the main form body
     return (
       <Main fullWidth>
-        <PermissionAlert access={['alerts:write']} project={project} />
+        <ProjectPermissionAlert access={['alerts:write']} project={project} />
 
         {eventView && <IncompatibleAlertQuery eventView={eventView} />}
         <Form
@@ -1343,10 +1343,6 @@ class RuleFormContainer extends DeprecatedAsyncComponent<Props, State> {
               isEditing={Boolean(ruleId)}
               isErrorMigration={showErrorMigrationWarning}
               isExtrapolatedChartData={isExtrapolatedChartData}
-              isForLlmMetric={[
-                'sum(ai.total_tokens.used)',
-                'sum(ai.total_cost)',
-              ].includes(aggregate)}
               isTransactionMigration={isMigration && !showErrorMigrationWarning}
               onComparisonDeltaChange={value =>
                 this.handleFieldChange('comparisonDelta', value)
@@ -1362,14 +1358,16 @@ class RuleFormContainer extends DeprecatedAsyncComponent<Props, State> {
             <AlertListItem>{t('Set thresholds')}</AlertListItem>
             {thresholdTypeForm(formDisabled)}
             {showErrorMigrationWarning && (
-              <Alert type="warning" showIcon>
-                {tct(
-                  "We've added [code:is:unresolved] to your events filter; please make sure the current thresholds are still valid as this alert is now filtering out resolved and archived errors.",
-                  {
-                    code: <code />,
-                  }
-                )}
-              </Alert>
+              <Alert.Container>
+                <Alert type="warning" showIcon>
+                  {tct(
+                    "We've added [code:is:unresolved] to your events filter; please make sure the current thresholds are still valid as this alert is now filtering out resolved and archived errors.",
+                    {
+                      code: <code />,
+                    }
+                  )}
+                </Alert>
+              </Alert.Container>
             )}
             {triggerForm(formDisabled)}
             {ruleNameOwnerForm(formDisabled)}

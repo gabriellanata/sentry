@@ -10,6 +10,9 @@ interface PermissionAlertProps extends Omit<AlertProps, 'type'> {
   message?: ReactNode;
 }
 
+/**
+ * @deprecated Use `OrganizationPermissionAlert` instead.
+ */
 function PermissionAlert({
   access = ['org:write'],
   message = t(
@@ -21,9 +24,11 @@ function PermissionAlert({
     <Access access={access}>
       {({hasAccess}) =>
         !hasAccess && (
-          <Alert data-test-id="org-permission-alert" type="warning" showIcon {...props}>
-            {message}
-          </Alert>
+          <Alert.Container>
+            <Alert data-test-id="org-permission-alert" type="warning" showIcon {...props}>
+              {message}
+            </Alert>
+          </Alert.Container>
         )
       }
     </Access>

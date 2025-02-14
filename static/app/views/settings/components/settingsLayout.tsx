@@ -17,7 +17,7 @@ import SettingsSearch from './settingsSearch';
 type Props = {
   children: React.ReactNode;
   renderNavigation?: (opts: {isMobileNavVisible: boolean}) => React.ReactNode;
-} & RouteComponentProps<{}, {}>;
+} & RouteComponentProps;
 
 function SettingsLayout(props: Props) {
   // This is used when the screen is small enough that the navigation should be
@@ -187,6 +187,15 @@ const Content = styled('div')`
    * it under the hood. This prevents double padding.
    */
   ${Layout.Page} {
+    padding: 0;
+  }
+
+  /**
+   * Components which use Layout.Header will provide their own padding.
+   * TODO: Refactor existing components to use Layout.Header and Layout.Body,
+   * then remove the padding from this component.
+   */
+  &:has(${Layout.Header}) {
     padding: 0;
   }
 `;

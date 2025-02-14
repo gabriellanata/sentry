@@ -16,6 +16,9 @@ export const permissionAlertText = t(
   'These settings can only be edited by users with the organization-level owner, manager, or team-level admin roles.'
 );
 
+/**
+ * @deprecated Use `ProjectPermissionAlert` instead.
+ */
 function PermissionAlert({
   access = ['project:write'],
   project,
@@ -26,9 +29,11 @@ function PermissionAlert({
     <Access access={access} project={project} team={team}>
       {({hasAccess}) =>
         !hasAccess && (
-          <Alert data-test-id="project-permission-alert" type="warning" {...props}>
-            {permissionAlertText}
-          </Alert>
+          <Alert.Container>
+            <Alert data-test-id="project-permission-alert" type="warning" {...props}>
+              {permissionAlertText}
+            </Alert>
+          </Alert.Container>
         )
       }
     </Access>
