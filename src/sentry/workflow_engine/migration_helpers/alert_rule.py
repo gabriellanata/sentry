@@ -3,6 +3,7 @@ import logging
 from typing import Any
 
 from django.forms import ValidationError
+
 from sentry.incidents.grouptype import MetricAlertFire
 from sentry.incidents.models.alert_rule import (
     AlertRule,
