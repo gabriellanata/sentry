@@ -142,3 +142,49 @@ class GroupHashMetadataTest(TestCase):
                 "new_config": DEFAULT_GROUPING_CONFIG,
             },
         )
+
+    @with_feature("organizations:grouphash-metadata-creation")
+    @override_options({"grouping.grouphash_metadata.backfill_sample_rate": 0.415})
+    def test_updates_obey_sample_rate(self):
+        self.project.update_option("sentry:grouping_config", LEGACY_GROUPING_CONFIG)
+
+        event1 = save_new_event({"message": "Dogs are great!"}, self.project)
+        grouphash1 = GroupHash.objects.filter(
+            project=self.project, hash=event1.get_primary_hash()
+        ).first()
+
+        self.assert_metadata_values(grouphash1, {"latest_grouping_config": LEGACY_GROUPING_CONFIG})
+
+        # Update the grouping config. Since there's nothing to parameterize in the message, the
+        # hash should be the same under both configs, meaning we'll hit the same grouphash.
+        self.project.update_option("sentry:grouping_config", DEFAULT_GROUPING_CONFIG)
+
+        # Over the sample rate cutoff, so no update should happen
+        with patch("sentry.grouping.ingest.grouphash_metadata.random.random", return_value=0.908):
+            event2 = save_new_event({"message": "Dogs are great!"}, self.project)
+            grouphash2 = GroupHash.objects.filter(
+                project=self.project, hash=event2.get_primary_hash()
+            ).first()
+
+            # Make sure we're dealing with the same grouphash
+            assert grouphash1 == grouphash2
+
+            # Grouping config wasn't updated
+            self.assert_metadata_values(
+                grouphash2, {"latest_grouping_config": LEGACY_GROUPING_CONFIG}
+            )
+
+        # Under the sample rate cutoff, so record should be updated
+        with patch("sentry.grouping.ingest.grouphash_metadata.random.random", return_value=0.1231):
+            event3 = save_new_event({"message": "Dogs are great!"}, self.project)
+            grouphash3 = GroupHash.objects.filter(
+                project=self.project, hash=event3.get_primary_hash()
+            ).first()
+
+            # Make sure we're dealing with the same grouphash
+            assert grouphash1 == grouphash3
+
+            # Grouping config was updated
+            self.assert_metadata_values(
+                grouphash3, {"latest_grouping_config": DEFAULT_GROUPING_CONFIG}
+            )
