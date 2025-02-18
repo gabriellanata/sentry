@@ -188,3 +188,131 @@ class GroupHashMetadataTest(TestCase):
             self.assert_metadata_values(
                 grouphash3, {"latest_grouping_config": DEFAULT_GROUPING_CONFIG}
             )
+
+    @with_feature("organizations:grouphash-metadata-creation")
+    @override_options({"grouping.grouphash_metadata.backfill_sample_rate": 1.0})
+    @patch("sentry.grouping.ingest.grouphash_metadata.metrics.incr")
+    def test_does_schema_update(self, mock_metrics_incr: MagicMock):
+        with patch(
+            "sentry.grouping.ingest.grouphash_metadata.GROUPHASH_METADATA_SCHEMA_VERSION", "11"
+        ):
+            event1 = save_new_event({"message": "Dogs are great!"}, self.project)
+            grouphash1 = GroupHash.objects.filter(
+                project=self.project, hash=event1.get_primary_hash()
+            ).first()
+
+            self.assert_metadata_values(
+                grouphash1,
+                {
+                    "schema_version": "11",
+                    "hashing_metadata": {
+                        "message_source": "message",
+                        "message_parameterized": False,
+                    },
+                },
+            )
+
+        # Update the schema by incrementing the version and changing what data is stored.
+        with (
+            patch(
+                "sentry.grouping.ingest.grouphash_metadata.GROUPHASH_METADATA_SCHEMA_VERSION", "12"
+            ),
+            patch(
+                "sentry.grouping.ingest.grouphash_metadata._get_message_hashing_metadata",
+                return_value={"something": "different"},
+            ),
+        ):
+
+            event2 = save_new_event({"message": "Dogs are great!"}, self.project)
+            grouphash2 = GroupHash.objects.filter(
+                project=self.project, hash=event2.get_primary_hash()
+            ).first()
+
+            # Make sure we're dealing with the same grouphash
+            assert grouphash1 == grouphash2
+
+            self.assert_metadata_values(
+                grouphash2,
+                {
+                    "schema_version": "12",
+                    "hashing_metadata": {"something": "different"},
+                },
+            )
+
+            mock_metrics_incr.assert_any_call(
+                "grouping.grouphash_metadata.db_hit",
+                tags={
+                    "reason": "outdated_schema",
+                    "current_version": "11",
+                    "new_version": "12",
+                },
+            )
+
+    @with_feature("organizations:grouphash-metadata-creation")
+    @override_options({"grouping.grouphash_metadata.backfill_sample_rate": 1.0})
+    @patch("sentry.grouping.ingest.grouphash_metadata.metrics.incr")
+    def test_does_both_updates(self, mock_metrics_incr: MagicMock):
+        self.project.update_option("sentry:grouping_config", LEGACY_GROUPING_CONFIG)
+
+        with patch(
+            "sentry.grouping.ingest.grouphash_metadata.GROUPHASH_METADATA_SCHEMA_VERSION", "11"
+        ):
+            event1 = save_new_event({"message": "Dogs are great!"}, self.project)
+            grouphash1 = GroupHash.objects.filter(
+                project=self.project, hash=event1.get_primary_hash()
+            ).first()
+
+            self.assert_metadata_values(
+                grouphash1,
+                {
+                    "latest_grouping_config": LEGACY_GROUPING_CONFIG,
+                    "schema_version": "11",
+                    "hashing_metadata": {
+                        "message_source": "message",
+                        "message_parameterized": False,
+                    },
+                },
+            )
+
+        # Update the grouping config. Since there's nothing to parameterize in the message, the
+        # hash should be the same under both configs, meaning we'll hit the same grouphash.
+        self.project.update_option("sentry:grouping_config", DEFAULT_GROUPING_CONFIG)
+
+        # Update the schema by incrementing the version and changing what data is stored.
+        with (
+            patch(
+                "sentry.grouping.ingest.grouphash_metadata.GROUPHASH_METADATA_SCHEMA_VERSION", "12"
+            ),
+            patch(
+                "sentry.grouping.ingest.grouphash_metadata._get_message_hashing_metadata",
+                return_value={"something": "different"},
+            ),
+        ):
+
+            event2 = save_new_event({"message": "Dogs are great!"}, self.project)
+            grouphash2 = GroupHash.objects.filter(
+                project=self.project, hash=event2.get_primary_hash()
+            ).first()
+
+            # Make sure we're dealing with the same grouphash
+            assert grouphash1 == grouphash2
+
+            self.assert_metadata_values(
+                grouphash2,
+                {
+                    "latest_grouping_config": DEFAULT_GROUPING_CONFIG,
+                    "schema_version": "12",
+                    "hashing_metadata": {"something": "different"},
+                },
+            )
+
+            mock_metrics_incr.assert_any_call(
+                "grouping.grouphash_metadata.db_hit",
+                tags={
+                    "reason": "config_and_schema",
+                    "current_config": LEGACY_GROUPING_CONFIG,
+                    "new_config": DEFAULT_GROUPING_CONFIG,
+                    "current_version": "11",
+                    "new_version": "12",
+                },
+            )
