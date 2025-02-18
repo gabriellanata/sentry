@@ -2905,6 +2905,36 @@ register(
     flags=FLAG_ALLOW_EMPTY | FLAG_AUTOMATOR_MODIFIABLE,
 )
 
+# When in active monitoring mode, overrides how many failures in a row we need to see to mark the monitor as down
+register(
+    "uptime.active-failure-threshold",
+    type=Int,
+    default=3,
+    flags=FLAG_AUTOMATOR_MODIFIABLE,
+)
+# When in active monitoring mode, how many successes in a row do we need to mark it as up
+register(
+    "uptime.active-recovery-threshold",
+    type=Int,
+    default=1,
+    flags=FLAG_AUTOMATOR_MODIFIABLE,
+)
+
+register(
+    "uptime.date_cutoff_epoch_seconds",
+    type=Int,
+    default=0,
+    flags=FLAG_AUTOMATOR_MODIFIABLE,
+)
+
+register(
+    "uptime.snuba_uptime_results.enabled",
+    type=Bool,
+    default=False,
+    flags=FLAG_AUTOMATOR_MODIFIABLE,
+)
+
+
 register(
     "releases.no_snuba_for_release_creation",
     type=Bool,
@@ -3021,23 +3051,9 @@ register(
 )
 
 register(
-    "uptime.snuba_uptime_results.enabled",
-    type=Bool,
-    default=False,
-    flags=FLAG_AUTOMATOR_MODIFIABLE,
-)
-
-register(
     "taskworker.grpc_service_config",
     type=String,
     default="""{"loadBalancingConfig": [{"round_robin": {}}]}""",
-    flags=FLAG_AUTOMATOR_MODIFIABLE,
-)
-
-register(
-    "uptime.date_cutoff_epoch_seconds",
-    type=Int,
-    default=0,
     flags=FLAG_AUTOMATOR_MODIFIABLE,
 )
 
