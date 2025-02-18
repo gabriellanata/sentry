@@ -8,6 +8,13 @@ from sentry.db.models.fields.foreignkey import FlexibleForeignKey
 from sentry.db.models.fields.jsonfield import JSONField
 from sentry.types.grouphash_metadata import HashingMetadata
 
+# The current version of the metadata schema. Any record encountered whose schema version is earlier
+# than this will have its data updated and its version set to this value. Stored as a string for
+# flexibility, in case we ever want to switch the way we denote versions.
+#
+# TODO: That second sentence isn't yet true.
+GROUPHASH_METADATA_SCHEMA_VERSION = "1"
+
 
 # The overall grouping method used
 class HashBasis(models.TextChoices):
